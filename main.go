@@ -5,6 +5,7 @@ import (
 	"os"
 
 	authapi "github.com/alubhorta/goth/api/auth"
+	userapi "github.com/alubhorta/goth/api/user"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 )
@@ -24,11 +25,6 @@ func main() {
 	}
 }
 
-func index(c *fiber.Ctx) error {
-	log.Println("serving index")
-	return c.JSON(fiber.Map{"message": "API is functional 🚀"})
-}
-
 func setupRoutes(app *fiber.App) {
 	app.Get("/", index)
 
@@ -40,4 +36,16 @@ func setupRoutes(app *fiber.App) {
 	app.Post("/api/v1/auth/reset/init", authapi.ResetPasswordInit)
 	app.Post("/api/v1/auth/reset/verify", authapi.ResetPasswordVerify)
 	app.Delete("/api/v1/auth/delete/:id", authapi.DeleteAccount)
+
+	// user routes
+	app.Get("/api/v1/user", userapi.GetAll)
+	app.Get("/api/v1/user/:id", userapi.GetOne)
+	app.Put("/api/v1/user/:id", userapi.UpdateOne)
+
+	// TODO: add requiresAuth middleware
+}
+
+func index(c *fiber.Ctx) error {
+	log.Println("serving index...")
+	return c.JSON(fiber.Map{"message": "API is functional 🚀"})
 }
