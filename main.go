@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
+	"os/signal"
 
 	authapi "github.com/alubhorta/goth/api/auth"
 	userapi "github.com/alubhorta/goth/api/user"
+	commonclients "github.com/alubhorta/goth/models/common"
+
 	"github.com/alubhorta/goth/db/dbclient"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
@@ -14,21 +18,42 @@ import (
 func main() {
 	godotenv.Load()
 
+	app := fiber.New()
+	// TODO: add cors
+
 	dbclient := &dbclient.MongoDbClient{}
 	dbclient.Init()
 
-	// TODO: add dbclient to CommonClients context
-
-	app := fiber.New()
+	commonClients := &commonclients.CommonClients{
+		DbClient: dbclient,
+	}
+	userCtx := context.WithValue(
+		context.Background(),
+		commonclients.CommonClients{},
+		commonClients,
+	)
+	app.Use(func(c *fiber.Ctx) error {
+		c.SetUserContext(userCtx)
+		return c.Next()
+	})
 
 	setupRoutes(app)
 
+	// ensure cleanup
+	cleanupFunc := func() {
+		log.Println("running cleanup tasks...")
+		dbclient.Cleanup(userCtx)
+		app.Shutdown()
+		log.Println("all done! bye 👋")
+	}
+	ensureGracefulTermination(cleanupFunc)
+
+	// start serving!
 	listenHost := os.Getenv("LISTEN_ON_HOST")
 	listenPort := os.Getenv("LISTEN_ON_PORT")
 
-	// TODO: ensure graceful termination
-
 	if err := app.Listen(listenHost + ":" + listenPort); err != nil {
+		cleanupFunc()
 		log.Fatalln(err)
 	}
 }
@@ -56,4 +81,14 @@ func setupRoutes(app *fiber.App) {
 func index(c *fiber.Ctx) error {
 	log.Println("serving index...")
 	return c.JSON(fiber.Map{"message": "API is functional 🚀"})
+}
+
+func ensureGracefulTermination(cleanupFunc func()) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		s := <-c
+		log.Printf("gracefully shutting down for %s...\n", s.String())
+		cleanupFunc()
+	}()
 }

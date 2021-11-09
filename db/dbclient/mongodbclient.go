@@ -8,6 +8,8 @@ import (
 
 	authaccess "github.com/alubhorta/goth/db/access/auth"
 	useraccess "github.com/alubhorta/goth/db/access/user"
+
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -37,16 +39,45 @@ func (dbClient *MongoDbClient) Init() {
 	dbName := os.Getenv("DB_NAME")
 	db := _mongoclient.Database(dbName)
 
+	userCollectionName := "user"
+	authCredCollectionName := "userAuthCredential"
+
 	dbClient._client = _mongoclient
-	dbClient.UserAccess = &useraccess.UserAccess{Collection: db.Collection("user")}
-	dbClient.AuthAccess = &authaccess.AuthAccess{Collection: db.Collection("userAuthCredential")}
+	dbClient.UserAccess = &useraccess.UserAccess{Collection: db.Collection(userCollectionName)}
+	dbClient.AuthAccess = &authaccess.AuthAccess{Collection: db.Collection(authCredCollectionName)}
 
 	if err := dbClient._client.Ping(ctx, readpref.Primary()); err != nil {
 		log.Fatalln(err)
 	}
 	log.Println("successfully connected and pinged mongodb! :)")
 
-	// TODO: add necessary indices
+	// ensure indices
+	usersCol := dbClient._client.Database(dbName).Collection(userCollectionName)
+	idxName, err := usersCol.Indexes().CreateOne(
+		ctx,
+		mongo.IndexModel{
+			Keys:    bson.D{{Key: "email", Value: 1}},
+			Options: options.Index().SetUnique(true),
+		},
+	)
+	if err != nil {
+		log.Fatalln("failed to ensure index.", err)
+	}
+	log.Printf("ensuring db index %v on %v collection \n", userCollectionName, idxName)
+
+	usersAuthCredCol := dbClient._client.Database(dbName).Collection(authCredCollectionName)
+	idxName, err = usersAuthCredCol.Indexes().CreateOne(
+		ctx,
+		mongo.IndexModel{
+			Keys:    bson.D{{Key: "email", Value: 1}},
+			Options: options.Index().SetUnique(true),
+		},
+	)
+	if err != nil {
+		log.Fatalln("failed to ensure index.", err)
+	}
+	log.Printf("ensuring db index %v on %v collection \n", authCredCollectionName, idxName)
+
 }
 
 func (dbClient *MongoDbClient) Cleanup(dbCtx context.Context) {
