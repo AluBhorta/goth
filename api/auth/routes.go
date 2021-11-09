@@ -10,6 +10,7 @@ import (
 	commonclients "github.com/alubhorta/goth/models/common"
 	usermodels "github.com/alubhorta/goth/models/user"
 	passwordutils "github.com/alubhorta/goth/utils/password"
+	tokenutils "github.com/alubhorta/goth/utils/token"
 	validationutils "github.com/alubhorta/goth/utils/validation"
 
 	"github.com/gofiber/fiber/v2"
@@ -86,13 +87,23 @@ func Signup(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
 	}
 
-	// TODO: generate new token pair
-	accessToken := "mock-accessToken"
-	refreshToken := "mock-refreshToken"
+	// generate new token pair
+	accessToken, err := tokenutils.CreateNewAccessToken(userId)
+	if err != nil {
+		msg := "failed to generate access token."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+	refreshToken, err := tokenutils.CreateNewRefreshToken(userId)
+	if err != nil {
+		msg := "failed to generate refresh token."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
 
-	msg := "successful signup up completed."
-
+	msg := "successful signup completed."
 	log.Println(msg, "userId:", userId)
+
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"message": msg,
 		"payload": fiber.Map{
