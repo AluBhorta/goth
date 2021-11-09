@@ -14,7 +14,7 @@ import (
 )
 
 func Signup(c *fiber.Ctx) error {
-	// / input validation
+	// input validation
 	input := new(authmodels.SignupInput)
 	if err := c.BodyParser(input); err != nil {
 		msg := "invalid input"
@@ -42,6 +42,7 @@ func Signup(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
 	}
 
+	// create auth credential
 	userId := fmt.Sprintf("%v", uuid.New())
 	now := time.Now()
 	authCred := &authmodels.UserAuthCredential{
@@ -55,6 +56,7 @@ func Signup(c *fiber.Ctx) error {
 	// TODO: save new auth credential
 	log.Println("authCred", authCred)
 
+	// create minimal model for userInfo
 	createUserInput := &usermodels.CreateUserInfoInput{
 		Email:     input.Email,
 		FirstName: input.FirstName,

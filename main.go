@@ -6,6 +6,7 @@ import (
 
 	authapi "github.com/alubhorta/goth/api/auth"
 	userapi "github.com/alubhorta/goth/api/user"
+	"github.com/alubhorta/goth/db/dbclient"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 )
@@ -13,12 +14,19 @@ import (
 func main() {
 	godotenv.Load()
 
+	dbclient := &dbclient.MongoDbClient{}
+	dbclient.Init()
+
+	// TODO: add dbclient to CommonClients context
+
 	app := fiber.New()
 
 	setupRoutes(app)
 
 	listenHost := os.Getenv("LISTEN_ON_HOST")
 	listenPort := os.Getenv("LISTEN_ON_PORT")
+
+	// TODO: ensure graceful termination
 
 	if err := app.Listen(listenHost + ":" + listenPort); err != nil {
 		log.Fatalln(err)
