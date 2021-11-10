@@ -10,6 +10,7 @@ import (
 	userapi "github.com/alubhorta/goth/api/user"
 	commonclients "github.com/alubhorta/goth/models/common"
 
+	"github.com/alubhorta/goth/db/cacheclient"
 	"github.com/alubhorta/goth/db/dbclient"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
@@ -24,11 +25,15 @@ func main() {
 	dbclient := &dbclient.MongoDbClient{}
 	dbclient.Init()
 
+	redisClient := &cacheclient.RedisClient{}
+	redisClient.Init()
+
 	userCtx := context.WithValue(
 		context.Background(),
 		commonclients.CommonClients{},
 		&commonclients.CommonClients{
-			DbClient: dbclient,
+			DbClient:    dbclient,
+			CacheClient: redisClient,
 		},
 	)
 	app.Use(func(c *fiber.Ctx) error {
@@ -41,6 +46,7 @@ func main() {
 	// ensure cleanup
 	cleanupFunc := func() {
 		log.Println("running cleanup tasks...")
+		redisClient.Cleanup()
 		dbclient.Cleanup(userCtx)
 		app.Shutdown()
 		log.Println("all done! bye 👋")

@@ -63,7 +63,7 @@ func (dbClient *MongoDbClient) Init() {
 	if err != nil {
 		log.Fatalln("failed to ensure index.", err)
 	}
-	log.Printf("ensuring db index %v on %v collection \n", userCollectionName, idxName)
+	log.Printf("ensuring db index %v on %v collection \n", idxName, userCollectionName)
 
 	usersAuthCredCol := dbClient._client.Database(dbName).Collection(authCredCollectionName)
 	idxName, err = usersAuthCredCol.Indexes().CreateOne(
@@ -76,7 +76,7 @@ func (dbClient *MongoDbClient) Init() {
 	if err != nil {
 		log.Fatalln("failed to ensure index.", err)
 	}
-	log.Printf("ensuring db index %v on %v collection \n", authCredCollectionName, idxName)
+	log.Printf("ensuring db index %v on %v collection \n", idxName, authCredCollectionName)
 
 }
 

@@ -3,6 +3,8 @@ package authapi
 import (
 	"fmt"
 	"log"
+	"os"
+	"strconv"
 	"time"
 
 	customerrors "github.com/alubhorta/goth/custom/errors"
@@ -161,7 +163,7 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
 	}
 
-	msg := "successfully logged in user"
+	msg := "successfully logged in user."
 	log.Println(msg, authCred.UserId)
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": msg,
@@ -175,7 +177,43 @@ func Login(c *fiber.Ctx) error {
 	})
 }
 
-func Logout(c *fiber.Ctx) error { return nil }
+func Logout(c *fiber.Ctx) error {
+	input := new(authmodels.LogoutInput)
+	if err := c.BodyParser(input); err != nil {
+		msg := "invalid input."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+
+	if input.AccessToken == "" && input.RefreshToken == "" {
+		msg := "invalid tokens provided."
+		log.Println(msg)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
+	} else {
+		accessMaxAgeInSeconds, err := strconv.Atoi(os.Getenv("ACCESS_TOKEN_MAX_AGE_IN_SECONDS"))
+		if err != nil {
+			msg := "error in type conversion."
+			log.Println(msg, "from string to int", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+		}
+		refreshMaxAgeInSeconds, err := strconv.Atoi(os.Getenv("REFRESH_TOKEN_MAX_AGE_IN_SECONDS"))
+		if err != nil {
+			msg := "error in type conversion."
+			log.Println(msg, "from string to int", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+		}
+
+		cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+		cacheClient := cc.CacheClient
+
+		cacheClient.Set(input.AccessToken, "blacklist:access", time.Second*time.Duration(accessMaxAgeInSeconds))
+		cacheClient.Set(input.RefreshToken, "blacklist:refresh", time.Second*time.Duration(refreshMaxAgeInSeconds))
+
+		msg := "successfully logged out."
+		log.Println(msg)
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+}
 
 func Refresh(c *fiber.Ctx) error { return nil }
 
