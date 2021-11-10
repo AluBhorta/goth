@@ -24,13 +24,12 @@ func main() {
 	dbclient := &dbclient.MongoDbClient{}
 	dbclient.Init()
 
-	commonClients := &commonclients.CommonClients{
-		DbClient: dbclient,
-	}
 	userCtx := context.WithValue(
 		context.Background(),
 		commonclients.CommonClients{},
-		commonClients,
+		&commonclients.CommonClients{
+			DbClient: dbclient,
+		},
 	)
 	app.Use(func(c *fiber.Ctx) error {
 		c.SetUserContext(userCtx)
@@ -49,8 +48,8 @@ func main() {
 	ensureGracefulTermination(cleanupFunc)
 
 	// start serving!
-	listenHost := os.Getenv("LISTEN_ON_HOST")
-	listenPort := os.Getenv("LISTEN_ON_PORT")
+	listenHost := os.Getenv("GOTH_LISTEN_HOST")
+	listenPort := os.Getenv("GOTH_LISTEN_PORT")
 
 	if err := app.Listen(listenHost + ":" + listenPort); err != nil {
 		cleanupFunc()
@@ -68,14 +67,15 @@ func setupRoutes(app *fiber.App) {
 	app.Post("/api/v1/auth/refresh", authapi.Refresh)
 	app.Post("/api/v1/auth/reset/init", authapi.ResetPasswordInit)
 	app.Post("/api/v1/auth/reset/verify", authapi.ResetPasswordVerify)
-	app.Delete("/api/v1/auth/delete/:id", authapi.DeleteAccount)
+	app.Delete("/api/v1/auth/delete", authapi.DeleteAccount)
+
+	// TODO: add requiresAuth middleware
 
 	// user routes
 	app.Get("/api/v1/user", userapi.GetAll)
 	app.Get("/api/v1/user/:id", userapi.GetOne)
 	app.Put("/api/v1/user/:id", userapi.UpdateOne)
 
-	// TODO: add requiresAuth middleware
 }
 
 func index(c *fiber.Ctx) error {

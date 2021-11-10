@@ -8,6 +8,7 @@ import (
 	customerrors "github.com/alubhorta/goth/custom/errors"
 	authmodels "github.com/alubhorta/goth/models/auth"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -31,4 +32,19 @@ func (ac *AuthAccess) CreateNewUserAuthCredential(credential *authmodels.UserAut
 	log.Printf("created authCred with mongo_id=%v\n ; userId=%v\n", res.InsertedID, credential.UserId)
 
 	return nil
+}
+
+func (ac *AuthAccess) GetAuthCredentialByEmail(email string) (*authmodels.UserAuthCredential, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	authCred := new(authmodels.UserAuthCredential)
+	result := ac.Collection.FindOne(ctx, bson.M{"email": email})
+	err := result.Decode(authCred)
+	if err == mongo.ErrNoDocuments {
+		return nil, customerrors.ErrNotFound
+	} else if err != nil {
+		return nil, err
+	}
+	return authCred, nil
 }

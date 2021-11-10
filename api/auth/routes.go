@@ -116,7 +116,64 @@ func Signup(c *fiber.Ctx) error {
 	})
 }
 
-func Login(c *fiber.Ctx) error { return nil }
+func Login(c *fiber.Ctx) error {
+	input := new(authmodels.LoginInput)
+	if err := c.BodyParser(input); err != nil {
+		msg := "invalid input."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
+	} else if !validationutils.IsValidEmail(input.Email) {
+		msg := "invalid email provided."
+		log.Println(msg)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+
+	cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+	dbclient := cc.DbClient
+
+	authCred, err := dbclient.AuthAccess.GetAuthCredentialByEmail(input.Email)
+	if err == customerrors.ErrNotFound || (err == nil && authCred == nil) {
+		msg := "no such user found."
+		log.Println(msg)
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": msg, "payload": nil})
+	} else if err != nil {
+		msg := "failed to login."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+	matches := passwordutils.DoesPasswordMatchHash(authCred.HashedPassword, input.Password)
+	if !matches {
+		msg := "invalid password provided."
+		log.Println(msg, "input password does not match hashed password")
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+
+	accessToken, err := tokenutils.CreateNewAccessToken(authCred.UserId)
+	if err != nil {
+		msg := "failed to generate access token."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+	refreshToken, err := tokenutils.CreateNewRefreshToken(authCred.UserId)
+	if err != nil {
+		msg := "failed to generate refresh token."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+
+	msg := "successfully logged in user"
+	log.Println(msg, authCred.UserId)
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": msg,
+		"payload": fiber.Map{
+			"userId": authCred.UserId,
+			"tokens": fiber.Map{
+				"access":  accessToken,
+				"refresh": refreshToken,
+			},
+		},
+	})
+}
 
 func Logout(c *fiber.Ctx) error { return nil }
 
