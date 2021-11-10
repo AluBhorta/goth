@@ -78,10 +78,8 @@ func setupRoutes(app *fiber.App) {
 	// TODO: add requiresAuth middleware
 
 	// user routes
-	app.Get("/api/v1/user", userapi.GetAll)
 	app.Get("/api/v1/user/:id", userapi.GetOne)
 	app.Put("/api/v1/user/:id", userapi.UpdateOne)
-
 }
 
 func index(c *fiber.Ctx) error {

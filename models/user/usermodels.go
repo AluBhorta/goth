@@ -18,3 +18,10 @@ type CreateUserInfoInput struct {
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
 }
+
+type UpdateUserInfoInput struct {
+	FirstName     string `json:"firstName"`
+	LastName      string `json:"lastName"`
+	Bio           string `json:"bio"`
+	ProfileImgUrl string `json:"profileImgUrl"`
+}
