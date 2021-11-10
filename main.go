@@ -9,6 +9,7 @@ import (
 	authapi "github.com/alubhorta/goth/api/auth"
 	userapi "github.com/alubhorta/goth/api/user"
 	commonclients "github.com/alubhorta/goth/models/common"
+	tokenutils "github.com/alubhorta/goth/utils/token"
 
 	"github.com/alubhorta/goth/db/cacheclient"
 	"github.com/alubhorta/goth/db/dbclient"
@@ -78,8 +79,8 @@ func setupRoutes(app *fiber.App) {
 	// TODO: add requiresAuth middleware
 
 	// user routes
-	app.Get("/api/v1/user/:id", userapi.GetOne)
-	app.Put("/api/v1/user/:id", userapi.UpdateOne)
+	app.Get("/api/v1/user/:id", tokenutils.RequiresAuth, userapi.GetOne)
+	app.Put("/api/v1/user/:id", tokenutils.RequiresAuth, userapi.UpdateOne)
 }
 
 func index(c *fiber.Ctx) error {
