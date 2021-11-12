@@ -26,3 +26,7 @@ type LogoutInput struct {
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
 }
+
+type RefreshInput struct {
+	RefreshToken string `json:"refreshToken"`
+}

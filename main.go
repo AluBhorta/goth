@@ -76,11 +76,10 @@ func setupRoutes(app *fiber.App) {
 	app.Post("/api/v1/auth/reset/verify", authapi.ResetPasswordVerify)
 	app.Delete("/api/v1/auth/delete", authapi.DeleteAccount)
 
-	// TODO: add requiresAuth middleware
-
 	// user routes
 	app.Get("/api/v1/user/:id", tokenutils.RequiresAuth, userapi.GetOne)
 	app.Put("/api/v1/user/:id", tokenutils.RequiresAuth, userapi.UpdateOne)
+	// TODO: remove id from path and use id parsed from access token
 }
 
 func index(c *fiber.Ctx) error {

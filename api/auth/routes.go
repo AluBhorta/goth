@@ -16,6 +16,7 @@ import (
 	validationutils "github.com/alubhorta/goth/utils/validation"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 )
 
@@ -215,7 +216,80 @@ func Logout(c *fiber.Ctx) error {
 	}
 }
 
-func Refresh(c *fiber.Ctx) error { return nil }
+func Refresh(c *fiber.Ctx) error {
+	input := new(authmodels.RefreshInput)
+	if err := c.BodyParser(input); err != nil {
+		msg := "invalid input."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+
+	cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+	cacheClient := cc.CacheClient
+
+	res, err := cacheClient.Get(input.RefreshToken)
+	if err != nil && err != customerrors.ErrNotFound {
+		msg := "failed to lookup cache."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+	} else if res == "blacklist:refresh" {
+		msg := "blacklisted token used."
+		log.Println(msg)
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+
+	token, err := jwt.Parse(input.RefreshToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+
+		signingKey := os.Getenv("REFRESH_TOKEN_SIGNING_KEY")
+		return []byte(signingKey), nil
+	})
+	if err != nil {
+		msg := "failed to parse or validate token."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		userId, ok := claims["userId"].(string)
+		if !ok || len(userId) <= 0 {
+			msg := "invalid user id provided in claim."
+			log.Println(msg, err)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
+		}
+
+		accessToken, err := tokenutils.CreateNewAccessToken(userId)
+		if err != nil {
+			msg := "failed to generate access token."
+			log.Println(msg, err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+		}
+		refreshToken, err := tokenutils.CreateNewRefreshToken(userId)
+		if err != nil {
+			msg := "failed to generate refresh token."
+			log.Println(msg, err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+		}
+
+		msg := "successfully refreshed tokens."
+		log.Println(msg, "for userId: ", userId)
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"message": msg,
+			"payload": fiber.Map{
+				"tokens": fiber.Map{
+					"access":  accessToken,
+					"refresh": refreshToken,
+				},
+			},
+		})
+	} else {
+		msg := "invalid token or claim typecast error."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+}
 
 func ResetPasswordInit(c *fiber.Ctx) error { return nil }
 
