@@ -11,6 +11,7 @@ import (
 	authmodels "github.com/alubhorta/goth/models/auth"
 	commonclients "github.com/alubhorta/goth/models/common"
 	usermodels "github.com/alubhorta/goth/models/user"
+	otputils "github.com/alubhorta/goth/utils/otp"
 	passwordutils "github.com/alubhorta/goth/utils/password"
 	tokenutils "github.com/alubhorta/goth/utils/token"
 	validationutils "github.com/alubhorta/goth/utils/validation"
@@ -291,8 +292,130 @@ func Refresh(c *fiber.Ctx) error {
 	}
 }
 
-func ResetPasswordInit(c *fiber.Ctx) error { return nil }
+func ResetPasswordInit(c *fiber.Ctx) error {
+	// parse email input from request
+	input := new(authmodels.ResetInitInput)
+	err := c.BodyParser(input)
+	if err != nil || input.Email == "" {
+		msg := "invalid input."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
+	} else if !validationutils.IsValidEmail(input.Email) {
+		msg := "invalid email provided."
+		log.Println(msg)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
 
-func ResetPasswordVerify(c *fiber.Ctx) error { return nil }
+	cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+	dbClient := cc.DbClient
+
+	// send 404 if email doesn't exist
+	_, err = dbClient.AuthAccess.GetAuthCredentialByEmail(input.Email)
+	if err == customerrors.ErrNotFound {
+		msg := "email does not exist."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": msg, "payload": nil})
+	} else if err != nil {
+		msg := "failed to read from database."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+
+	cacheClient := cc.CacheClient
+	cacheKey := "resetOTP:" + input.Email
+	exists, err := cacheClient.Exists(cacheKey)
+	if err != nil {
+		msg := "failed to read cache."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+	} else if exists {
+		msg := "password reset already initiated for this email. check your email or try after 2 minutes."
+		log.Println(msg)
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": msg, "payload": nil})
+	} // else carry on
+
+	// save otp to cache with TTL=2min
+	otp, err := otputils.GenerateOTP(6)
+	if err != nil {
+		msg := "failed to generate otp."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+	cacheClient.Set(cacheKey, otp, time.Second*120)
+	log.Println("otp generated:", otp, "\tcacheKey: ", cacheKey)
+
+	// TODO: send otp via email to input.Email
+
+	msg := "a verification code (otp) is sent to your email. reset your password within the next 2 minutes."
+	log.Println(msg)
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": msg,
+		"payload": nil,
+	})
+}
+
+func ResetPasswordVerify(c *fiber.Ctx) error {
+	input := new(authmodels.ResetVerifyInput)
+	err := c.BodyParser(input)
+	if err != nil || input.Email == "" || input.Otp == "" || input.NewPassword == "" {
+		msg := "invalid input."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
+	} else if !validationutils.IsValidEmail(input.Email) {
+		msg := "invalid email provided."
+		log.Println(msg)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
+	} else if len(input.NewPassword) < 6 {
+		msg := "invalid input - password must be at least 6 characters."
+		log.Println(msg)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+
+	cacheKey := "resetOTP:" + input.Email
+
+	cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+	cacheClient := cc.CacheClient
+
+	val, err := cacheClient.Get(cacheKey)
+	if err == customerrors.ErrNotFound {
+		msg := "not found - invalid input or expired key."
+		log.Println(msg)
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": msg, "payload": nil})
+	} else if err != nil {
+		msg := "failed to read from cache."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+	} else if val != input.Otp {
+		msg := "invalid input - otp mismatch."
+		log.Println(msg)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
+	} // else all good, change the password
+
+	newHasedPass, err := passwordutils.GetHashedPassword(input.NewPassword)
+	if err != nil {
+		msg := "could not hash password."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+
+	dbclient := cc.DbClient
+	err = dbclient.AuthAccess.UpdateUserAuthPassword(input.Email, newHasedPass)
+	if err == customerrors.ErrNotFound {
+		msg := "no such user found."
+		log.Println(msg, "with email:", input.Email)
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": msg, "payload": nil})
+	} else if err != nil {
+		msg := "failed to update password."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
+
+	msg := "password successfully reset."
+	log.Println(msg, "for user with email:", input.Email)
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": msg,
+		"payload": nil,
+	})
+}
 
 func DeleteAccount(c *fiber.Ctx) error { return nil }

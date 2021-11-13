@@ -30,3 +30,13 @@ type LogoutInput struct {
 type RefreshInput struct {
 	RefreshToken string `json:"refreshToken"`
 }
+
+type ResetInitInput struct {
+	Email string `json:"email"`
+}
+
+type ResetVerifyInput struct {
+	Email       string `json:"email"`
+	Otp         string `json:"otp"`
+	NewPassword string `json:"newPassword"`
+}

@@ -48,3 +48,26 @@ func (ac *AuthAccess) GetAuthCredentialByEmail(email string) (*authmodels.UserAu
 	}
 	return authCred, nil
 }
+
+func (ac *AuthAccess) UpdateUserAuthPassword(email, newHashedPassword string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	result, err := ac.Collection.UpdateOne(
+		ctx,
+		bson.M{"email": email},
+		bson.D{
+			{"$set", bson.D{
+				{Key: "hashedPassword", Value: newHashedPassword},
+				{Key: "modifiedAt", Value: time.Now()},
+			}},
+		},
+	)
+	if err != nil {
+		return err
+	} else if result.MatchedCount == 0 {
+		return customerrors.ErrNotFound
+	}
+
+	return nil
+}
