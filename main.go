@@ -8,12 +8,13 @@ import (
 
 	authapi "github.com/alubhorta/goth/api/auth"
 	userapi "github.com/alubhorta/goth/api/user"
+	"github.com/alubhorta/goth/db/cacheclient"
+	"github.com/alubhorta/goth/db/dbclient"
 	tokenmw "github.com/alubhorta/goth/middleware/token"
 	commonmodels "github.com/alubhorta/goth/models/common"
 
-	"github.com/alubhorta/goth/db/cacheclient"
-	"github.com/alubhorta/goth/db/dbclient"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
 )
 
@@ -22,7 +23,7 @@ func main() {
 
 	app := fiber.New()
 
-	// TODO: add cors
+	app.Use(cors.New())
 
 	dbclient := &dbclient.MongoDbClient{}
 	dbclient.Init()
