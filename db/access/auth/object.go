@@ -71,3 +71,16 @@ func (ac *AuthAccess) UpdateUserAuthPassword(email, newHashedPassword string) er
 
 	return nil
 }
+
+func (ac *AuthAccess) DeleteAnAuthCredential(userId string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	result, err := ac.Collection.DeleteOne(ctx, bson.M{"_id": userId})
+	if err != nil {
+		return err
+	} else if result.DeletedCount == 0 {
+		return customerrors.ErrNotFound
+	}
+	return nil
+}

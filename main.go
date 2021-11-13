@@ -74,7 +74,7 @@ func setupRoutes(app *fiber.App) {
 	app.Post("/api/v1/auth/refresh", authapi.Refresh)
 	app.Post("/api/v1/auth/reset/init", authapi.ResetPasswordInit)
 	app.Post("/api/v1/auth/reset/verify", authapi.ResetPasswordVerify)
-	app.Delete("/api/v1/auth/delete", authapi.DeleteAccount)
+	app.Delete("/api/v1/auth/delete/:id", tokenutils.RequiresAuth, authapi.DeleteAccount)
 
 	// user routes
 	app.Get("/api/v1/user/:id", tokenutils.RequiresAuth, userapi.GetOne)
