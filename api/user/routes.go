@@ -78,7 +78,7 @@ func UpdateOne(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
 	}
 
-	msg := "successfully updated user"
+	msg := "successfully updated user."
 	log.Println(msg, "id: ", userId)
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": msg, "payload": nil})
 }

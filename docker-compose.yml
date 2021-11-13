@@ -1,6 +1,13 @@
 version: "3.9"
 
 services:
+  backend:
+    build: .
+    image: ghcr.io/alubhorta/goth
+    ports:
+      - 3333:3333
+    restart: unless-stopped
+    env_file: .prod.env
   mongodb:
     image: mongo:5-focal
     ports:
@@ -8,7 +15,7 @@ services:
     volumes:
       - mongo_data:/data/db
     restart: unless-stopped
-    env_file: .env
+    env_file: .mongo.env
   redis:
     image: redis:6-alpine
     ports:
