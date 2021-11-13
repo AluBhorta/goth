@@ -8,8 +8,8 @@ import (
 
 	authapi "github.com/alubhorta/goth/api/auth"
 	userapi "github.com/alubhorta/goth/api/user"
-	commonclients "github.com/alubhorta/goth/models/common"
-	tokenutils "github.com/alubhorta/goth/utils/token"
+	tokenmw "github.com/alubhorta/goth/middleware/token"
+	commonmodels "github.com/alubhorta/goth/models/common"
 
 	"github.com/alubhorta/goth/db/cacheclient"
 	"github.com/alubhorta/goth/db/dbclient"
@@ -21,6 +21,7 @@ func main() {
 	godotenv.Load()
 
 	app := fiber.New()
+
 	// TODO: add cors
 
 	dbclient := &dbclient.MongoDbClient{}
@@ -29,13 +30,14 @@ func main() {
 	redisClient := &cacheclient.RedisClient{}
 	redisClient.Init()
 
+	commonClients := &commonmodels.CommonClients{
+		DbClient:    dbclient,
+		CacheClient: redisClient,
+	}
 	userCtx := context.WithValue(
 		context.Background(),
-		commonclients.CommonClients{},
-		&commonclients.CommonClients{
-			DbClient:    dbclient,
-			CacheClient: redisClient,
-		},
+		commonmodels.CommonCtx{},
+		&commonmodels.CommonCtx{Clients: commonClients, UserId: ""},
 	)
 	app.Use(func(c *fiber.Ctx) error {
 		c.SetUserContext(userCtx)
@@ -74,12 +76,11 @@ func setupRoutes(app *fiber.App) {
 	app.Post("/api/v1/auth/refresh", authapi.Refresh)
 	app.Post("/api/v1/auth/reset/init", authapi.ResetPasswordInit)
 	app.Post("/api/v1/auth/reset/verify", authapi.ResetPasswordVerify)
-	app.Delete("/api/v1/auth/delete/:id", tokenutils.RequiresAuth, authapi.DeleteAccount)
+	app.Delete("/api/v1/auth/delete", tokenmw.ParseTokenUserId, tokenmw.RequiresAuth, authapi.DeleteAccount)
 
 	// user routes
-	app.Get("/api/v1/user/:id", tokenutils.RequiresAuth, userapi.GetOne)
-	app.Put("/api/v1/user/:id", tokenutils.RequiresAuth, userapi.UpdateOne)
-	// TODO: remove id from path and use id parsed from access token
+	app.Get("/api/v1/user", tokenmw.ParseTokenUserId, tokenmw.RequiresAuth, userapi.GetOne)
+	app.Put("/api/v1/user", tokenmw.ParseTokenUserId, tokenmw.RequiresAuth, userapi.UpdateOne)
 }
 
 func index(c *fiber.Ctx) error {

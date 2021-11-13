@@ -9,7 +9,7 @@ import (
 
 	customerrors "github.com/alubhorta/goth/custom/errors"
 	authmodels "github.com/alubhorta/goth/models/auth"
-	commonclients "github.com/alubhorta/goth/models/common"
+	commonmodels "github.com/alubhorta/goth/models/common"
 	usermodels "github.com/alubhorta/goth/models/user"
 	otputils "github.com/alubhorta/goth/utils/otp"
 	passwordutils "github.com/alubhorta/goth/utils/password"
@@ -50,7 +50,7 @@ func Signup(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
 	}
 
-	cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+	cc := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).Clients
 	dbclient := cc.DbClient
 
 	// create auth credential
@@ -132,7 +132,7 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
 	}
 
-	cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+	cc := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).Clients
 	dbclient := cc.DbClient
 
 	authCred, err := dbclient.AuthAccess.GetAuthCredentialByEmail(input.Email)
@@ -205,7 +205,7 @@ func Logout(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
 		}
 
-		cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+		cc := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).Clients
 		cacheClient := cc.CacheClient
 
 		cacheClient.Set(input.AccessToken, "blacklist:access", time.Second*time.Duration(accessMaxAgeInSeconds))
@@ -225,7 +225,7 @@ func Refresh(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
 	}
 
-	cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+	cc := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).Clients
 	cacheClient := cc.CacheClient
 
 	res, err := cacheClient.Get(input.RefreshToken)
@@ -253,7 +253,8 @@ func Refresh(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if ok && token.Valid {
 		userId, ok := claims["userId"].(string)
 		if !ok || len(userId) <= 0 {
 			msg := "invalid user id provided in claim."
@@ -306,7 +307,7 @@ func ResetPasswordInit(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
 	}
 
-	cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+	cc := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).Clients
 	dbClient := cc.DbClient
 
 	// send 404 if email doesn't exist
@@ -373,7 +374,7 @@ func ResetPasswordVerify(c *fiber.Ctx) error {
 
 	cacheKey := "resetOTP:" + input.Email
 
-	cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+	cc := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).Clients
 	cacheClient := cc.CacheClient
 
 	val, err := cacheClient.Get(cacheKey)
@@ -419,14 +420,14 @@ func ResetPasswordVerify(c *fiber.Ctx) error {
 }
 
 func DeleteAccount(c *fiber.Ctx) error {
-	userId := c.Params("id")
+	userId := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).UserId
 	if userId == "" {
-		msg := "empty user id provided."
-		log.Println(msg)
+		msg := "invalid user id provided."
+		log.Println(msg, "userId not found in user context.")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
 	}
 
-	cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+	cc := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).Clients
 	dbclient := cc.DbClient
 
 	// TODO: [transaction safety] - find out a way to delete  both documents atomically

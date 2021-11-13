@@ -4,24 +4,24 @@ import (
 	"log"
 
 	customerrors "github.com/alubhorta/goth/custom/errors"
-	commonclients "github.com/alubhorta/goth/models/common"
+	commonmodels "github.com/alubhorta/goth/models/common"
 	usermodels "github.com/alubhorta/goth/models/user"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 func GetOne(c *fiber.Ctx) error {
-	id := c.Params("id")
-	if id == "" {
-		msg := "invalid user Id provided."
-		log.Println(msg)
+	userId := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).UserId
+	if userId == "" {
+		msg := "invalid user id provided."
+		log.Println(msg, "userId not found in user context.")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
 	}
 
-	cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+	cc := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).Clients
 	dbclient := cc.DbClient
 
-	aUser, err := dbclient.UserAccess.GetAUser(id)
+	aUser, err := dbclient.UserAccess.GetAUser(userId)
 	if err == customerrors.ErrNotFound {
 		msg := "user does not exist."
 		log.Println(msg, err)
@@ -38,12 +38,12 @@ func GetOne(c *fiber.Ctx) error {
 }
 
 func UpdateOne(c *fiber.Ctx) error {
-	// NOTE: email is not updateable via this API
+	// TODO: allow update of email as well
 
-	userId := c.Params("id")
+	userId := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).UserId
 	if userId == "" {
-		msg := "empty user Id provided."
-		log.Println(msg)
+		msg := "invalid user id provided."
+		log.Println(msg, "userId not found in user context.")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": msg, "payload": nil})
 	}
 
@@ -60,7 +60,7 @@ func UpdateOne(c *fiber.Ctx) error {
 
 	log.Printf("update user with id=%v and updateUserInput=%v\n", userId, input)
 
-	cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+	cc := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).Clients
 	dbclient := cc.DbClient
 
 	err := dbclient.UserAccess.UpdateAUser(userId, input)

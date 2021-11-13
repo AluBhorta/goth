@@ -1,4 +1,4 @@
-package tokenutils
+package tokenmiddleware
 
 import (
 	"log"
@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	customerrors "github.com/alubhorta/goth/custom/errors"
-	commonclients "github.com/alubhorta/goth/models/common"
+	commonmodels "github.com/alubhorta/goth/models/common"
 
 	"github.com/gofiber/fiber/v2"
 	jwtware "github.com/gofiber/jwt/v3"
@@ -22,7 +22,7 @@ func RequiresAuth(c *fiber.Ctx) error {
 	if len(splitted) == 2 {
 		accessToken := splitted[1]
 
-		cc := c.UserContext().Value(commonclients.CommonClients{}).(*commonclients.CommonClients)
+		cc := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).Clients
 		cacheClient := cc.CacheClient
 
 		res, err := cacheClient.Get(accessToken)

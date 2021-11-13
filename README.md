@@ -12,12 +12,12 @@ A tiny go auth micro-framework, with support for JWT access and refresh tokens. 
 - POST `/api/v1/auth/refresh` : refresh tokens
 - POST `/api/v1/auth/reset/init` : init password reset
 - POST `/api/v1/auth/reset/verify` : verify password reset
-- DELETE `/api/v1/auth/delete/:id` : 🛡 delete account
+- DELETE `/api/v1/auth/delete` : 🛡 delete account
 
 **user endpoints:**
 
-- GET `/api/v1/user/:id` : 🛡 get user info
-- PUT `/api/v1/user/:id` : 🛡 update user info
+- GET `/api/v1/user` : 🛡 get user info
+- PUT `/api/v1/user` : 🛡 update user info
 
 🛡: requires access token via `Authorization` header
 
