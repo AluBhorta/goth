@@ -1,6 +1,25 @@
 # goth
 
-Simple go auth and user directory micro-framework. 🔐
+A tiny go auth micro-framework, with support for JWT access and refresh tokens. 🔐
+
+## Available HTTP APIs
+
+**auth endpoints:**
+
+- POST `/api/v1/auth/signup` : signup
+- POST `/api/v1/auth/login` : login
+- POST `/api/v1/auth/logout` : logout
+- POST `/api/v1/auth/refresh` : refresh tokens
+- POST `/api/v1/auth/reset/init` : init password reset
+- POST `/api/v1/auth/reset/verify` : verify password reset
+- DELETE `/api/v1/auth/delete/:id` : 🛡 delete account
+
+**user endpoints:**
+
+- GET `/api/v1/user/:id` : 🛡 get user info
+- PUT `/api/v1/user/:id` : 🛡 update user info
+
+🛡: requires access token via `Authorization` header
 
 ## Getting started
 
