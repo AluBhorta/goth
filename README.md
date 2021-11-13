@@ -50,8 +50,8 @@ MONGO_INITDB_ROOT_PASSWORD=secret
 
 NOTE:
 
-- update the DB_PASSWORD, ACCESS_TOKEN_SIGNING_KEY and REFRESH_TOKEN_SIGNING_KEY to something more secure
-- make sure you sync the db credentials when updated to all the mentioned `*.env` files
+- update the `DB_PASSWORD` (& `MONGO_INITDB_ROOT_PASSWORD`), `ACCESS_TOKEN_SIGNING_KEY` and `REFRESH_TOKEN_SIGNING_KEY` to something more secure
+- when db credentials are updated, make sure you sync them across all the `*.env` files
 
 ### Usage in Docker
 
@@ -94,3 +94,7 @@ docker compose up -d mongodb redis
 ```sh
 go run .
 ```
+
+## License
+
+MIT.
