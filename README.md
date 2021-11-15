@@ -19,7 +19,7 @@ A tiny go auth micro-framework, with support for JWT access and refresh tokens. 
 - GET `/api/v1/user` : 🛡 get user info
 - PUT `/api/v1/user` : 🛡 update user info
 
-🛡: requires access token via `Authorization` header
+🛡: protected route i.e. requires valid bearer token `Authorization` header
 
 ## Getting started
 
@@ -74,7 +74,7 @@ NOTE:
 
 - update the `DB_PASSWORD` (& `MONGO_INITDB_ROOT_PASSWORD`), `ACCESS_TOKEN_SIGNING_KEY` and `REFRESH_TOKEN_SIGNING_KEY` to something more secure
 - when db credentials are updated, make sure you sync them across all the `*.env` files
-- to be able to send emails for password reset successfully, you need to 
+- to be able to send emails for password reset successfully, you need to
   - [create a sendgrid account](https://sendgrid.com/)
   - [create an API key](https://app.sendgrid.com/settings/api_keys) and update env `SENDGRID_API_KEY`
   - [create a sender](https://app.sendgrid.com/settings/sender_auth/senders/new) and update env `FROM_EMAIL_ADDRESS`
