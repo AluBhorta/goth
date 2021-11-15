@@ -436,26 +436,14 @@ func DeleteAccount(c *fiber.Ctx) error {
 	cc := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).Clients
 	dbclient := cc.DbClient
 
-	// TODO: [transaction safety] - find out a way to delete  both documents atomically
-	err := dbclient.AuthAccess.DeleteAnAuthCredential(userId)
-	if err == customerrors.ErrNotFound {
-		msg := "no such user credential found for deletion."
-		log.Println(msg, err, "id:", userId)
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": msg, "payload": nil})
-	} else if err != nil {
-		msg := "failed to delete user credential."
-		log.Println(msg, err, "id:", userId)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
-	}
-
-	err = dbclient.UserAccess.DeleteAUser(userId)
+	err := dbclient.DbTxnManager.DeleteUserTxn(userId)
 	if err == customerrors.ErrNotFound {
 		msg := "no such user found for deletion."
 		log.Println(msg, err, "id:", userId)
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": msg, "payload": nil})
 	} else if err != nil {
 		msg := "failed to delete user."
-		log.Println(msg, "id:", userId, err)
+		log.Println(msg, err, "id:", userId)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
 	}
 

@@ -35,3 +35,4 @@ vendor
 
 # logs
 *.log
+*.key

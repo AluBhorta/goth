@@ -5,20 +5,24 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	authaccess "github.com/alubhorta/goth/db/access/auth"
+	"github.com/alubhorta/goth/db/access/transactions"
 	useraccess "github.com/alubhorta/goth/db/access/user"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 )
 
 type MongoDbClient struct {
-	_client    *mongo.Client
-	UserAccess *useraccess.UserAccess
-	AuthAccess *authaccess.AuthAccess
+	_client      *mongo.Client
+	UserAccess   *useraccess.UserAccess
+	AuthAccess   *authaccess.AuthAccess
+	DbTxnManager *transactions.DbTxnManager
 }
 
 func (dbClient *MongoDbClient) Init() {
@@ -42,9 +46,18 @@ func (dbClient *MongoDbClient) Init() {
 	userCollectionName := "user"
 	authCredCollectionName := "userAuthCredential"
 
+	// prereq for transactions
+	wcMajority := writeconcern.New(writeconcern.WMajority(), writeconcern.WTimeout(3*time.Second))
+	wcMajorityCollectionOpts := options.Collection().SetWriteConcern(wcMajority)
+
 	dbClient._client = _mongoclient
-	dbClient.UserAccess = &useraccess.UserAccess{Collection: db.Collection(userCollectionName)}
-	dbClient.AuthAccess = &authaccess.AuthAccess{Collection: db.Collection(authCredCollectionName)}
+	dbClient.UserAccess = &useraccess.UserAccess{Collection: db.Collection(userCollectionName, wcMajorityCollectionOpts)}
+	dbClient.AuthAccess = &authaccess.AuthAccess{Collection: db.Collection(authCredCollectionName, wcMajorityCollectionOpts)}
+	dbClient.DbTxnManager = &transactions.DbTxnManager{
+		Client:      _mongoclient,
+		UserCol:     dbClient.UserAccess.Collection,
+		AuthCredCol: dbClient.AuthAccess.Collection,
+	}
 
 	if err := dbClient._client.Ping(ctx, readpref.Primary()); err != nil {
 		log.Fatalln(err)

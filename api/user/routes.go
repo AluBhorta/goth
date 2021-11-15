@@ -38,8 +38,6 @@ func GetOne(c *fiber.Ctx) error {
 }
 
 func UpdateOne(c *fiber.Ctx) error {
-	// TODO: allow update of email as well
-
 	userId := c.UserContext().Value(commonmodels.CommonCtx{}).(*commonmodels.CommonCtx).UserId
 	if userId == "" {
 		msg := "invalid user id provided."
