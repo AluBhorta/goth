@@ -11,6 +11,7 @@ import (
 	authmodels "github.com/alubhorta/goth/models/auth"
 	commonmodels "github.com/alubhorta/goth/models/common"
 	usermodels "github.com/alubhorta/goth/models/user"
+	emailutils "github.com/alubhorta/goth/utils/email"
 	otputils "github.com/alubhorta/goth/utils/otp"
 	passwordutils "github.com/alubhorta/goth/utils/password"
 	tokenutils "github.com/alubhorta/goth/utils/token"
@@ -345,7 +346,12 @@ func ResetPasswordInit(c *fiber.Ctx) error {
 	cacheClient.Set(cacheKey, otp, time.Second*120)
 	log.Println("otp generated:", otp, "\tcacheKey: ", cacheKey)
 
-	// TODO: send otp via email to input.Email
+	err = emailutils.SendOtpMail(input.Email, otp)
+	if err != nil {
+		msg := "failed to send otp via mail."
+		log.Println(msg, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": msg, "payload": nil})
+	}
 
 	msg := "a verification code (otp) is sent to your email. reset your password within the next 2 minutes."
 	log.Println(msg)

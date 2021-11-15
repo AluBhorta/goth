@@ -50,6 +50,9 @@ ACCESS_TOKEN_MAX_AGE_IN_SECONDS=3600
 REFRESH_TOKEN_MAX_AGE_IN_SECONDS=1296000
 ACCESS_TOKEN_SIGNING_KEY=your-access-signing-key
 REFRESH_TOKEN_SIGNING_KEY=your-refresh-signing-key
+
+SENDGRID_API_KEY=your-sendgrid-api-key
+FROM_EMAIL_ADDRESS=verified-sendgrid-sender@example.com
 ```
 
 copy the same file and name that `.prod.env`, with these two variables updated:
@@ -71,6 +74,10 @@ NOTE:
 
 - update the `DB_PASSWORD` (& `MONGO_INITDB_ROOT_PASSWORD`), `ACCESS_TOKEN_SIGNING_KEY` and `REFRESH_TOKEN_SIGNING_KEY` to something more secure
 - when db credentials are updated, make sure you sync them across all the `*.env` files
+- to be able to send emails for password reset successfully, you need to 
+  - [create a sendgrid account](https://sendgrid.com/)
+  - [create an API key](https://app.sendgrid.com/settings/api_keys) and update env `SENDGRID_API_KEY`
+  - [create a sender](https://app.sendgrid.com/settings/sender_auth/senders/new) and update env `FROM_EMAIL_ADDRESS`
 
 ### Usage in Docker
 
